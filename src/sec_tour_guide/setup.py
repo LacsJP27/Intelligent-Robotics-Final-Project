@@ -33,10 +33,9 @@ setup(
     license='MIT',
     tests_require=['pytest'],
     entry_points={
-        'console_scripts': [
+    'console_scripts': [
             'tour_state_machine = sec_tour_guide.tour_state_machine:main',
-            'group_tracker = sec_tour_guide.group_tracker:main',
             'safety_monitor = sec_tour_guide.safety_monitor:main',
         ],
-    },
+},
 )
