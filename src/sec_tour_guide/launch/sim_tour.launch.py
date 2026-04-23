@@ -8,8 +8,10 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    pkg_share = get_package_share_directory('sec_tour_guide')
-    twist_mux_config = os.path.join(pkg_share, 'config', 'twist_mux.yaml')
+    pkg_sec_tour_guide = get_package_share_directory('sec_tour_guide')
+    pkg_turtlebot4_gazebo = get_package_share_directory('turtlebot4_gazebo')
+    pkg_nav2_bringup = get_package_share_directory('nav2_bringup')
+    twist_mux_config = os.path.join(pkg_sec_tour_guide, 'config', 'twist_mux.yaml')
 
     # ------------------------------------------------------------------ #
     # twist_mux — velocity priority arbitration                           #
@@ -29,10 +31,23 @@ def generate_launch_description():
     # ------------------------------------------------------------------ #
     # TODO (Member A): Gazebo Harmonic world + TurtleBot 4 spawn          #
     # ------------------------------------------------------------------ #
-    # gazebo = IncludeLaunchDescription(
-    #     PythonLaunchDescriptionSource([...]),
-    #     launch_arguments={...}.items(),
-    # )
+    world_path = os.path.join(pkg_sec_tour_guide, 'worlds', 'test_world.sdf')
+
+    # Gazebo launch
+    gazebo_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(
+                pkg_turtlebot4_gazebo, 
+                'launch', 
+                'turtlebot4_world.launch.py')
+        ),
+        launch_arguments={
+            'world': world_path
+        }.items(),
+    )
+
+    # SLAM Toolbox launch
+    # TODO
 
     # ------------------------------------------------------------------ #
     # TODO (Member A): Nav2 bringup                                       #
