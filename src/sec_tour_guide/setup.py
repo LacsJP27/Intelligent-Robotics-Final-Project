@@ -1,4 +1,4 @@
-from setuptools import find_packages, setup
+from setuptools import setup, find_packages
 import os
 from glob import glob
 
@@ -6,36 +6,25 @@ package_name = 'sec_tour_guide'
 
 setup(
     name=package_name,
-    version='0.1.0',
+    version='0.0.0',
     packages=find_packages(exclude=['test']),
     data_files=[
-        ('share/ament_index/resource_index/packages',
-            ['resource/' + package_name]),
+        ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        (os.path.join('share', package_name, 'config'),
-            glob('config/*.yaml')),
-        (os.path.join('share', package_name, 'launch'),
-            glob('launch/*.py')),
-        (os.path.join('share', package_name, 'worlds'),
-            glob('worlds/*.sdf')),
-        (os.path.join('share', package_name, 'worlds', 'models', 'person_cylinder'),
-            glob('worlds/models/person_cylinder/*')),
-        (os.path.join('share', package_name, 'maps'),
-            glob('maps/*')),
-        (os.path.join('share', package_name, 'rviz'),
-            glob('rviz/*.rviz')),
+        (os.path.join('share', package_name, 'config'), glob('config/*.yaml')),
+        (os.path.join('share', package_name, 'launch'), glob('launch/*.py')),
+        (os.path.join('share', package_name, 'worlds'), glob('worlds/*.sdf')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='Joseph Lacsamana',
-    maintainer_email='joseph.p.lacsamana-1@ou.edu',
-    description='SEC Robot Tour Guide — autonomous tour guide for Sarkeys Energy Center using TurtleBot 4',
-    license='MIT',
+    maintainer='lacs0000',
+    maintainer_email='jplacsamana@gmail.com',
+    description='SEC Robot Tour Guide',
+    license='Apache-2.0',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             'tour_state_machine = sec_tour_guide.tour_state_machine:main',
-            'group_tracker = sec_tour_guide.group_tracker:main',
             'safety_monitor = sec_tour_guide.safety_monitor:main',
         ],
     },
