@@ -8,74 +8,51 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    pkg_sec_tour_guide = get_package_share_directory('sec_tour_guide')
-    pkg_turtlebot4_gazebo = get_package_share_directory('turtlebot4_gazebo')
-    pkg_nav2_bringup = get_package_share_directory('nav2_bringup')
-    twist_mux_config = os.path.join(pkg_sec_tour_guide, 'config', 'twist_mux.yaml')
+    pkg = get_package_share_directory('sec_tour_guide')
+    nav2_share = get_package_share_directory('nav2_bringup')
 
-    # ------------------------------------------------------------------ #
-    # twist_mux — velocity priority arbitration                           #
-    #   P0: /safety/cmd_vel  (emergency stop, highest priority)           #
-    #   P1: /cmd_vel_key     (keyboard teleop override)                   #
-    #   P2: /nav_vel         (Nav2 autonomous output, lowest priority)    #
-    #   output → /cmd_vel    (TurtleBot 4 hardware driver)                #
-    # ------------------------------------------------------------------ #
-    twist_mux_node = Node(
-        package='twist_mux',
-        executable='twist_mux',
-        name='twist_mux',
-        parameters=[twist_mux_config],
-        remappings=[('cmd_vel_out', '/cmd_vel')],
-    )
+    world_file = os.path.join(pkg, 'worlds', 'world.sdf')
+    waypoints_file = os.path.join(pkg, 'config', 'tour_waypoints.yaml')
 
-    # ------------------------------------------------------------------ #
-    # TODO (Member A): Gazebo Harmonic world + TurtleBot 4 spawn          #
-    # ------------------------------------------------------------------ #
-    world_path = os.path.join(pkg_sec_tour_guide, 'worlds', 'test_world.sdf')
-
-    # Gazebo launch
-    gazebo_launch = IncludeLaunchDescription(
+    # ----------------------------------------------------------------
+    # Gazebo + TurtleBot 4 + Nav2 + SLAM  (reused from Project 2)
+    # ----------------------------------------------------------------
+    tb4_sim = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(
-                pkg_turtlebot4_gazebo, 
-                'launch', 
-                'turtlebot4_world.launch.py')
+            os.path.join(nav2_share, 'launch', 'tb4_simulation_launch.py')
         ),
         launch_arguments={
-            'world': world_path
+            'world':   world_file,
+            'slam':    'True',
+            'headless': 'False',
+            # Robot spawn position — center of the test world
+            'x_pose': '2.286',
+            'y_pose': '3.048',
+            'z_pose': '0.01',
+            'yaw':    '0.0',
         }.items(),
     )
 
-    # SLAM Toolbox launch
-    # TODO
+    # ----------------------------------------------------------------
+    # Our custom nodes
+    # ----------------------------------------------------------------
+    safety_monitor = Node(
+        package='sec_tour_guide',
+        executable='safety_monitor',
+        name='safety_monitor',
+        output='screen',
+    )
 
-    # ------------------------------------------------------------------ #
-    # TODO (Member A): Nav2 bringup                                       #
-    #   Remember to remap Nav2's cmd_vel output → /nav_vel so             #
-    #   twist_mux can arbitrate it:                                        #
-    #     remappings=[('/cmd_vel', '/nav_vel')]                           #
-    # ------------------------------------------------------------------ #
-    # nav2 = IncludeLaunchDescription(...)
-
-    # ------------------------------------------------------------------ #
-    # TODO (Member C): safety_monitor node                                #
-    # ------------------------------------------------------------------ #
-    # safety_monitor_node = Node(
-    #     package='sec_tour_guide',
-    #     executable='safety_monitor',
-    #     name='safety_monitor',
-    # )
-
-    # ------------------------------------------------------------------ #
-    # TODO (Member B): tour_state_machine node                            #
-    # ------------------------------------------------------------------ #
-    # tour_state_machine_node = Node(
-    #     package='sec_tour_guide',
-    #     executable='tour_state_machine',
-    #     name='tour_state_machine',
-    # )
+    tour_fsm = Node(
+        package='sec_tour_guide',
+        executable='tour_state_machine',
+        name='tour_state_machine',
+        output='screen',
+        parameters=[{'waypoints_file': waypoints_file}],
+    )
 
     return LaunchDescription([
-        twist_mux_node,
-        # ... other nodes
+        tb4_sim,
+        safety_monitor,
+        tour_fsm,
     ])
