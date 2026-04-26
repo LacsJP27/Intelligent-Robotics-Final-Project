@@ -15,15 +15,15 @@ Build a robot tour guide that leads people through waypoints inside SEC (Sarkeys
 
 ## Minimum Viable Demo (MVP)
 
-The MVP is the baseline that **must work** for demo day:
+The MVP is the baseline that **must work** by demo day (May 4):
 
-1. Robot navigates 3+ waypoints sequentially via Nav2
-2. Robot pauses if no LiDAR clusters are detected behind it
-3. Robot resumes navigation when clusters reappear
-4. Emergency stop triggers when an obstacle is within 0.25m
-5. Human override via keyboard teleop at any time
+1. Robot navigates 3+ waypoints sequentially via Nav2 ✅
+2. Emergency stop triggers when an obstacle is within 0.25m ✅
+3. Human override via keyboard teleop at any time ✅
+4. Robot pauses if no LiDAR clusters are detected behind it ⏳
+5. Robot resumes navigation when clusters reappear ⏳
 
-Everything beyond this (camera fusion, narration, dynamic speed modulation) is a stretch goal.
+Items 1–3 are done (Phase 1). Items 4–5 are the focus of Phase 2 (group detection) and Phase 3 (FSM integration). Everything beyond this list (camera fusion, narration, dynamic speed modulation, search rotation, real-world deployment) is a stretch goal — only attempted after the MVP runs end-to-end in sim.
 
 ---
 
@@ -55,11 +55,10 @@ sec_tour_guide_ws/
 │       │
 │       ├── config/
 │       │   ├── nav2_params.yaml           # Nav2 parameter overrides for TurtleBot 4
-│       │   ├── twist_mux.yaml             # twist_mux priority config
 │       │   └── tour_waypoints.yaml        # Waypoint sequence (x, y, yaw per stop)
 │       │
 │       ├── launch/
-│       │   ├── tour_guide.launch.py       # Full system launch (all nodes + Nav2 + mux)
+│       │   ├── tour_guide.launch.py       # Full system launch (all nodes + Nav2)
 │       │   ├── sim_tour.launch.py         # Gazebo sim launch (world + robot + people)
 │       │   └── detection_test.launch.py   # Standalone group_tracker + rviz for tuning
 │       │
@@ -102,9 +101,9 @@ sec_tour_guide_ws/
 
 | File | Description | Publishes | Subscribes |
 |------|-------------|-----------|------------|
-| `tour_state_machine.py` | FSM orchestrator. Sends Nav2 goals, listens to group status, manages tour state transitions. | `/tour/state` (`String`) | `/group_tracker/status` (`GroupStatus`), Nav2 action feedback |
+| `tour_state_machine.py` | FSM orchestrator. Owns `/cmd_vel`. Sends Nav2 goals, listens to group status and emergency flag, cancels Nav2 and publishes `Twist` directly when overriding. | `/cmd_vel` (`Twist`), `/tour/state` (`String`) | `/group_tracker/status` (`GroupStatus`), `/emergency_stop` (`Bool`), `/cmd_vel_key` (`Twist`), Nav2 action feedback |
 | `group_tracker.py` | Filters `/scan` to rear arc, runs DBSCAN clustering, tracks clusters across frames, publishes group status. | `/group_tracker/status` (`GroupStatus`), `/group_tracker/markers` (`MarkerArray` for RViz) | `/scan` (`LaserScan`) |
-| `safety_monitor.py` | Monitors `/scan` for emergency-close obstacles (<0.25m). Publishes zero-velocity override via `twist_mux`. Also subscribes to Create 3 hazard detection. | `/safety/cmd_vel` (`Twist`) | `/scan` (`LaserScan`), `/hazard_detection` (Create 3) |
+| `safety_monitor.py` | Monitors `/scan` for emergency-close obstacles (<0.25m) in the forward arc. Publishes a simple Bool flag the FSM consumes. | `/emergency_stop` (`Bool`) | `/scan` (`LaserScan`) |
 
 ### Custom Message
 
@@ -131,25 +130,7 @@ tour:
     - {x: 15.0, y: 8.0, yaw: 0.0,    label: "Tour End"}
 ```
 
-**`twist_mux.yaml`** — velocity priority:
-```yaml
-twist_mux:
-  ros__parameters:
-    topics:
-      safety:
-        topic: /safety/cmd_vel
-        timeout: 0.5
-        priority: 0          # highest — emergency stop
-      teleop:
-        topic: /cmd_vel_key
-        timeout: 0.5
-        priority: 1          # human override
-      navigation:
-        topic: /nav_vel
-        timeout: 0.5
-        priority: 2          # Nav2 output
-    output_topic: /cmd_vel
-```
+**Velocity command priority** is enforced by the FSM itself rather than a separate multiplexer node. The FSM owns `/cmd_vel`. When emergency or teleop fires, the FSM cancels the active Nav2 goal (so Nav2 stops publishing) and publishes the override `Twist` directly. Priority order, top to bottom: emergency stop → teleop → Nav2. We tried `twist_mux` early and removed it — for two override sources where the FSM already knows which mode it's in, an extra mux node adds package, config, and topic-remap surface without buying anything.
 
 ---
 
@@ -161,34 +142,36 @@ twist_mux:
 │                                                              │
 │   ┌──────────────────────┐     ┌──────────────────────────┐ │
 │   │  tour_state_machine  │────▶│  Nav2 (NavigateToPose)   │ │
-│   │  (FSM orchestrator)  │◀────│  action server           │ │
-│   └──────────┬───────────┘     └────────────┬─────────────┘ │
-│              │                               │               │
-│              │ /group_tracker/status          │ /nav_vel      │
-│              │                               │               │
-├──────────────┼───────────────────────────────┼───────────────┤
-│              │      REACTIVE LAYER           │               │
-│              │                               │               │
-│   ┌──────────┴───────────┐     ┌─────────────▼─────────────┐│
-│   │   group_tracker      │     │       twist_mux           ││
-│   │   (LiDAR clustering) │     │  P0: safety  ──▶ /cmd_vel ││
-│   └──────────▲───────────┘     │  P1: teleop               ││
-│              │                 │  P2: nav                   ││
-│   ┌──────────┴───────────┐     └─────────────▲─────────────┘│
-│   │   safety_monitor     │                   │               │
-│   │   (emergency stop)   │───────────────────┘               │
-│   └──────────▲───────────┘   /safety/cmd_vel                 │
+│   │  (FSM, owns /cmd_vel)│◀────│  action server           │ │
+│   └──────────┬───────────┘     └──────────────────────────┘ │
+│              │   ▲   ▲                                       │
+│              │   │   │                                       │
+│              │   │   └── /cmd_vel_key (teleop_twist_keyboard)│
+│              │   │                                           │
+│              │   └────── /emergency_stop (Bool)              │
+│              │                                               │
+│              │ /group_tracker/status                          │
 │              │                                               │
 ├──────────────┼───────────────────────────────────────────────┤
-│              │         HARDWARE / SENSORS                     │
+│              │      REACTIVE LAYER                            │
 │              │                                               │
-│         /scan (RPLIDAR A1)    /odom    /hazard_detection     │
-│              │                  │            │                │
-│         ┌────┴──────────────────┴────────────┴──────────┐    │
-│         │         TurtleBot 4 (Create 3 + RPi 4)        │    │
-│         └───────────────────────────────────────────────┘    │
+│   ┌──────────┴───────────┐     ┌──────────────────────────┐ │
+│   │   group_tracker      │     │   safety_monitor         │ │
+│   │   (LiDAR clustering) │     │   (emergency stop flag)  │ │
+│   └──────────▲───────────┘     └────────────▲─────────────┘ │
+│              │                               │               │
+├──────────────┼───────────────────────────────┼───────────────┤
+│              │         HARDWARE / SENSORS    │               │
+│              │                               │               │
+│         /scan (RPLIDAR A1) ──────────────────┘               │
+│              │                                               │
+│         ┌────┴───────────────────────────────────────────┐   │
+│         │         TurtleBot 4 (Create 3 + RPi 4)         │   │
+│         └────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+The FSM is the only publisher on `/cmd_vel`. In `NAVIGATING` it sits silent and lets Nav2 publish; in any override state it cancels the Nav2 goal and publishes the override `Twist` itself.
 
 ---
 
@@ -264,8 +247,7 @@ SAFETY_PUBLISH_RATE = 20.0      # Hz
 TOPIC_SCAN = "/scan"
 TOPIC_GROUP_STATUS = "/group_tracker/status"
 TOPIC_TOUR_STATE = "/tour/state"
-TOPIC_SAFETY_CMD = "/safety/cmd_vel"
-TOPIC_NAV_CMD = "/nav_vel"
+TOPIC_EMERGENCY = "/emergency_stop"
 TOPIC_CMD_VEL = "/cmd_vel"
 TOPIC_TELEOP = "/cmd_vel_key"
 ```
@@ -283,16 +265,15 @@ TOPIC_TELEOP = "/cmd_vel_key"
 | Workspace scaffolding | All | Create `sec_tour_guide_ws/`, `package.xml`, `setup.py`, folder structure. Push to Git. |
 | Map creation | **Member A** | Build simplified SEC corridor map. Option 1: `slam_toolbox` in Gazebo. Option 2: hand-draw occupancy grid in GIMP (faster). Output: `sec_corridor.pgm` + `.yaml`. |
 | Nav2 configuration | **Member A** | Copy TurtleBot 4 Nav2 defaults, override in `nav2_params.yaml`. Tune costmap inflation, controller velocity limits. Verify `NavigateToPose` action works with the map. |
-| `tour_state_machine` skeleton | **Member B** | Implement FSM with states `IDLE → NAVIGATING_TO_WAYPOINT → WAYPOINT_REACHED → TOUR_COMPLETE`. Load waypoints from YAML. Send goals to Nav2 one at a time. No group detection yet — just auto-advance. |
-| `twist_mux` setup | **Member C** | Install and configure `twist_mux`. Verify priority works: teleop overrides Nav2. Write `twist_mux.yaml`. |
-| `safety_monitor` node | **Member C** | Subscribe to `/scan`, check for any point < 0.25m in forward arc. Publish zero `Twist` to `/safety/cmd_vel`. Subscribe to `/hazard_detection` for bump sensors. |
-| `sim_tour.launch.py` | **Member C** | Launch file that brings up Gazebo world + robot + Nav2 + twist_mux + all custom nodes. |
+| `tour_state_machine` skeleton | **Member B** | Implement FSM with states `IDLE → NAVIGATING → WAYPOINT_REACHED → TOUR_COMPLETE`, plus `EMERGENCY_STOP` and `TELEOP_OVERRIDE` branches. Load waypoints from YAML. Send goals to Nav2 one at a time. FSM owns `/cmd_vel`: silent during `NAVIGATING`, publishes overrides directly otherwise. No group detection yet — just auto-advance. |
+| `safety_monitor` node | **Member C** | Subscribe to `/scan`, check for any point < 0.25m in the forward arc, publish a `Bool` on `/emergency_stop` for the FSM. |
+| `sim_tour.launch.py` | **Member C** | Launch file that brings up Gazebo world + robot + Nav2 + all custom nodes. |
 
 **Phase 1 exit criteria**:
-- [ ] Robot spawns in Gazebo corridor world
-- [ ] Robot navigates to 3+ waypoints in sequence without collision
-- [ ] Teleop overrides Nav2 via `twist_mux`
-- [ ] Emergency stop triggers when object placed <0.25m in front
+- [x] Robot spawns in Gazebo corridor world
+- [x] Robot navigates to 3+ waypoints in sequence without collision
+- [x] Teleop overrides Nav2 (FSM cancels goal and relays `/cmd_vel_key`)
+- [x] Emergency stop triggers when object placed <0.25m in front
 
 ---
 
@@ -329,10 +310,10 @@ TOPIC_TELEOP = "/cmd_vel_key"
 |------|-------|---------|
 | FSM integration | **Member A** | Wire `group_tracker/status` into `tour_state_machine`. Implement all state transitions: `WAITING_FOR_GROUP`, `PAUSED_WAITING`, `SEARCHING_FOR_GROUP`. |
 | Nav2 pause/resume | **Member A** | On pause: `cancel_goal_async()`. On resume: re-send current waypoint goal. Handle Nav2 feedback for waypoint-reached detection. |
-| Search rotation | **Member A** | In `SEARCHING_FOR_GROUP`: publish slow angular velocity (0.3 rad/s) to Nav2's cmd topic via twist_mux. Stop when `group_detected` fires or timeout. |
+| Search rotation | **Member A** | In `SEARCHING_FOR_GROUP`: cancel Nav2 goal, FSM publishes a slow angular velocity (0.3 rad/s) directly on `/cmd_vel`. Stop when `group_detected` fires or timeout. |
 | End-to-end Gazebo test | **Member B** | Create test scenario: cylinders follow robot → cylinders stop (triggers pause) → cylinders resume (robot resumes) → cylinders disappear (triggers search). |
 | Threshold tuning | **Member B** | Run detection in multiple scenarios, adjust DBSCAN params and distance thresholds. Document final values. |
-| `tour_guide.launch.py` | **Member C** | Full system launch: Gazebo + Nav2 + all custom nodes + twist_mux + RViz. Single command to start everything. |
+| `tour_guide.launch.py` | **Member C** | Full system launch: Gazebo + Nav2 + all custom nodes + RViz. Single command to start everything. |
 | FSM unit tests | **Member C** | `test_state_machine.py`: Mock `GroupStatus` messages, verify correct state transitions without hardware. |
 
 **Phase 3 exit criteria**:
@@ -353,7 +334,7 @@ TOPIC_TELEOP = "/cmd_vel_key"
 |------|-------|---------|
 | Real-world testing | **Member A** | Deploy to physical TurtleBot 4 in SEC. Tune thresholds for real human legs (noisier than cylinders). Record rosbag data. |
 | Code cleanup | **All** | Docstrings on every class/method. Type hints. Consistent naming. Remove dead code. Ensure `pylint`/`flake8` passes. |
-| `attribution.md` | **Member B** | Document all borrowed code: Nav2 (Apache 2.0), twist_mux, TurtleBot 4 packages, sklearn DBSCAN. Clearly separate original work. |
+| `attribution.md` | **Member B** | Document all borrowed code: Nav2 (Apache 2.0), TurtleBot 4 packages, sklearn DBSCAN, Project 2 control pattern carry-over. Clearly separate original work. |
 | Report — Architecture & Methods | **Member B** | System diagram, node descriptions, FSM design, detection algorithm explanation. |
 | Report — Results & Testing | **Member C** | Run 5+ tours in simulation, record metrics. Create tables/graphs: completion rate, pause events, timing. Screenshots from RViz and Gazebo. |
 | Report — Introduction & Conclusion | **Member A** | Problem statement, related work, lessons learned. |
@@ -374,7 +355,7 @@ TOPIC_TELEOP = "/cmd_vel_key"
 
 | Area | Member A | Member B | Member C |
 |------|----------|----------|----------|
-| **Phase 1** | Map + Nav2 config | FSM skeleton + waypoints | twist_mux + safety_monitor + launch |
+| **Phase 1** | Map + Nav2 config | FSM skeleton + waypoints | safety_monitor + launch |
 | **Phase 2** | Nav2 tuning continued | group_tracker + clustering + custom msg | Gazebo people sim + cylinder models |
 | **Phase 3** | FSM integration + Nav2 pause/resume | E2E testing + threshold tuning | Full launch file + FSM unit tests |
 | **Phase 4** | Real-world testing + README + report intro | Attribution + report architecture | Report results + demo video |
@@ -403,7 +384,7 @@ await self.goal_handle.cancel_goal_async()
 self.goal_handle = await self.nav_client.send_goal_async(goal)
 ```
 
-**Do NOT** run the existing obstacle avoidance node simultaneously with Nav2's local planner. Nav2 handles obstacle avoidance via its costmap. The `safety_monitor` only fires for emergency stop and publishes through `twist_mux` at highest priority.
+**Do NOT** run the existing obstacle avoidance node simultaneously with Nav2's local planner. Nav2 handles obstacle avoidance via its costmap. The `safety_monitor` only flags emergency-close obstacles via `/emergency_stop`; the FSM is the one that reacts (cancel Nav2 goal, publish zero `Twist`).
 
 ---
 
@@ -494,7 +475,7 @@ Run each test scenario 5× and record:
 |------|-----------|--------|-----------|
 | Nav2 config consumes too much time | Medium | High | Use simplified rectangular map first. Only attempt real SEC map if time allows. |
 | Group detection too noisy | Medium | High | Fallback: timer-based leading (move 10s, pause 5s, repeat) — no detection needed. |
-| twist_mux integration issues | Low | Medium | Test in Phase 1 day 1. Fallback: single `/cmd_vel` publisher in `tour_state_machine`, manually gate Nav2 output. |
+| Nav2 keeps publishing `/cmd_vel` after override | Low | Medium | FSM cancels the Nav2 goal before publishing its own `Twist`; once a goal is cancelled, Nav2's controller stops emitting velocity. Verified in Phase 1 testing. |
 | Sim-to-real gap breaks detection | High | Medium | Allocate full last week for real-world tuning. Have sim-only demo as backup. |
 | Scope creep | Medium | Low | Cut camera fusion, narration, dynamic speed first. MVP is waypoints + pause/resume + e-stop. |
 
@@ -507,7 +488,6 @@ Document in `attribution.md`:
 | Package | License | What We Use |
 |---------|---------|-------------|
 | Nav2 | Apache 2.0 | Path planning, waypoint navigation, costmap, local planner |
-| twist_mux (`twist_mux` ROS 2 pkg) | BSD | Velocity command priority multiplexing |
 | TurtleBot 4 packages | Apache 2.0 | Robot description, sensor drivers, Gazebo sim |
 | scikit-learn | BSD | DBSCAN clustering (in `group_tracker`) |
 | Gazebo Harmonic | Apache 2.0 | Simulation environment |
