@@ -26,6 +26,7 @@ setup(
         'console_scripts': [
             'tour_state_machine = sec_tour_guide.tour_state_machine:main',
             'safety_monitor = sec_tour_guide.safety_monitor:main',
+            'group_tracker = sec_tour_guide.group_tracker:main',
         ],
     },
 )
