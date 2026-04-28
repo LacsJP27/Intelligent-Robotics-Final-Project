@@ -1,0 +1,84 @@
+slam_toolbox:
+  ros__parameters:
+    # =================================================================================
+    # Solver Plugin Parameters
+    # These parameters configure the core optimization "backend" used to solve the
+    # SLAM graph. SLAM is formulated as a least-squares problem, and the Ceres
+    # Solver is used to find the most likely robot path and map that fits all
+    # sensor measurements. These settings are for advanced tuning and generally
+    # represent a robust default configuration.
+    # =================================================================================
+    solver_plugin: "solver_plugins::CeresSolver"
+    ceres_linear_solver: "SPARSE_NORMAL_CHOLESKY"
+    ceres_preconditioner: "SCHUR_JACOBI"
+    ceres_trust_region_strategy: "LEVENBERG_MARQUARDT"
+    ceres_dogleg_type: "TRADITIONAL_DOGLEG"
+    ceres_loss_function: "None"
+
+    # =================================================================================
+    # ROS Topic & Frame Parameters
+    # These define the ROS ecosystem connections for the SLAM node, including which
+    # topics to subscribe to and which coordinate frames to use for building the map.
+    # =================================================================================
+    odom_frame: "odom"           # Frame attached to odometry (usually drifts over time)
+    map_frame: "map"             # The global, non-drifting frame created by SLAM
+    base_frame: "base_link"      # The robot's primary coordinate frame
+    scan_topic: "/scan"          # Topic to get LaserScan messages from
+    mode: "mapping"              # "mapping" to build a new map; "localization" to use an existing one
+
+    # =================================================================================
+    # General Tuning & Trigger Conditions
+    # These parameters control when new nodes and constraints are added to the SLAM
+    # graph. This prevents adding redundant information and keeps the problem tractable.
+    # =================================================================================
+    use_scan_matching: true               # If true, use laser scan matching to refine pose estimates. Essential.
+    use_scan_barycenter: true             # Use the center of mass of the scan for coarse matching.
+    minimum_travel_distance: 0.2          # [meters] Add a new node only after moving this far.
+    minimum_travel_heading: 0.17          # [radians, ~10 deg] Add a new node only after turning this much.
+    scan_buffer_size: 10                  # Number of recent scans to hold in memory for matching.
+    scan_buffer_maximum_scan_distance: 10.0 # Max distance of a scan to be added to the buffer.
+    link_match_minimum_response_fine: 0.1 # Threshold for accepting a scan-match between consecutive nodes.
+    link_scan_maximum_distance: 1.5       # How far to search for a match between consecutive scans.
+
+    # =================================================================================
+    # Loop Closure Parameters
+    # These settings control how the system detects when it has returned to a previously
+    # visited area. A successful "loop closure" dramatically reduces accumulated error.
+    # =================================================================================
+    do_loop_closing: true                 # Enable/disable loop closure detection.
+    loop_search_maximum_distance: 3.0     # [meters] How far to search for a potential loop closure from the current pose.
+    loop_match_minimum_chain_size: 10     # Minimum number of nodes in a sequence to be considered a valid loop.
+    loop_match_maximum_variance_coarse: 3.0 # Coarse matching quality threshold for loop closures.
+    loop_match_minimum_response_coarse: 0.35# Coarse matching score threshold for loop closures.
+    loop_match_minimum_response_fine: 0.45# Fine matching score threshold after finding a coarse match.
+
+    # =================================================================================
+    # Scan Matcher Correlation Parameters
+    # These parameters tune the "real-time" or "local" scan matching that happens
+    # between consecutive scans to reduce odometry drift.
+    # =================================================================================
+    correlation_search_space_dimension: 0.5   # [meters] Search area size for local scan matching.
+    correlation_search_space_resolution: 0.01 # Search resolution for local scan matching.
+    correlation_search_space_smear_deviation: 0.1 # How much to "smear" the scan to handle uncertainty.
+
+    # =================================================================================
+    # Loop Closure Correlation Parameters
+    # These parameters tune the "global" scan matching that happens when searching
+    # for a loop closure. The search space is larger because the uncertainty is higher.
+    # =================================================================================
+    loop_search_space_dimension: 8.0      # [meters] Search area size for loop closure matching.
+    loop_search_space_resolution: 0.05    # Search resolution for loop closure matching.
+    loop_search_space_smear_deviation: 0.03 # How much to "smear" the scan for loop closure matching.
+
+    # =================================================================================
+    # Scan Matcher Quality Parameters
+    # These settings penalize bad matches to improve the robustness of the scan matcher.
+    # =================================================================================
+    distance_variance_penalty: 0.5        # Penalty for matches that are far apart.
+    angle_variance_penalty: 1.0           # Penalty for matches that require a large rotation.
+    fine_search_angle_offset: 0.00349     # [radians] Search range for fine-tuning angle.
+    coarse_search_angle_offset: 0.349     # [radians] Search range for coarse angle search.
+    coarse_angle_resolution: 0.0349       # [radians] Resolution for coarse angle search.
+    minimum_angle_penalty: 0.9            # Minimum penalty for angular differences.
+    minimum_distance_penalty: 0.5         # Minimum penalty for distance differences.
+    use_response_expansion: true          # Use a technique to expand the search if the initial match is poor.

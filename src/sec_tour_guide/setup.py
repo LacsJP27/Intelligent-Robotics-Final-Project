@@ -14,6 +14,8 @@ setup(
         (os.path.join('share', package_name, 'config'), glob('config/*.yaml')),
         (os.path.join('share', package_name, 'launch'), glob('launch/*.py')),
         (os.path.join('share', package_name, 'worlds'), glob('worlds/*.sdf')),
+        (os.path.join('share', package_name, 'worlds', 'models', 'person_cylinder'),
+         glob('worlds/models/person_cylinder/*')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -27,6 +29,7 @@ setup(
             'tour_state_machine = sec_tour_guide.tour_state_machine:main',
             'safety_monitor = sec_tour_guide.safety_monitor:main',
             'group_tracker = sec_tour_guide.group_tracker:main',
+            'group_spawner = sec_tour_guide.group_spawner:main'
         ],
     },
 )

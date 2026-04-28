@@ -249,6 +249,11 @@ TOPIC_TELEOP = "/cmd_vel_key"
 
 ---
 
+Running the spawn people script:
+```
+ros2 launch sec_tour_guide spawn_people.launch.py
+```
+
 ### Phase 3 — Integration: Adaptive Leading (Days 12–21)
 
 **Goal**: Full tour with pause/resume behavior driven by group detection.
