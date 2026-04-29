@@ -43,6 +43,7 @@ def generate_launch_description():
         output='screen',
     )
 
+
     tour_fsm = Node(
         package='sec_tour_guide',
         executable='tour_state_machine',
@@ -51,8 +52,16 @@ def generate_launch_description():
         parameters=[{'waypoints_file': waypoints_file}],
     )
 
+    group_tracker = Node(
+        package='sec_tour_guide',
+        executable='group_tracker',
+        name='group_tracker',
+        output='screen', 
+    )
+
     return LaunchDescription([
         tb4_sim,
         safety_monitor,
         tour_fsm,
+        group_tracker,
     ])

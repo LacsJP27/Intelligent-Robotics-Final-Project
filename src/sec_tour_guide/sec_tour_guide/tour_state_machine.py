@@ -18,6 +18,8 @@ from sec_tour_guide.utils.constants import (
     TOPIC_TELEOP,
     TOPIC_TOUR_STATE,
     TOPIC_EMERGENCY,
+    TOPIC_GROUP_DETECTED,
+    GROUP_LOST_TIMEOUT_SEC
 )
 
 
@@ -30,6 +32,7 @@ WAYPOINT_REACHED = 'WAYPOINT_REACHED'
 EMERGENCY_STOP = 'EMERGENCY_STOP'
 TELEOP_OVERRIDE = 'TELEOP_OVERRIDE'
 TOUR_COMPLETE = 'TOUR_COMPLETE'
+WAITING_FOR_GROUP = 'WAITING_FOR_GROUP'
 
 
 def _yaw_to_quat(yaw: float):
@@ -64,6 +67,9 @@ class TourStateMachine(Node):
         # --- Emergency stop flag (set by safety_monitor) ---
         self._emergency = False
 
+        # --- Group detection flag (set by group_tracker) ---
+        self._last_group_seen = time.time() # assume group there at startup
+
         # --- Teleop tracking ---
         self._last_teleop_time = 0.0
         self._latest_teleop = Twist()
@@ -75,7 +81,7 @@ class TourStateMachine(Node):
         # --- Subscribers ---
         self.create_subscription(Bool, TOPIC_EMERGENCY, self._emergency_cb, 10)
         self.create_subscription(Twist, TOPIC_TELEOP, self._teleop_cb, 10)
-
+        self.create_subscription(Bool, TOPIC_GROUP_DETECTED, self._group_detected_cb, 10)
         # --- Main loop timer ---
         period = 1.0 / FSM_LOOP_RATE_HZ
         self.create_timer(period, self._loop)
@@ -93,6 +99,11 @@ class TourStateMachine(Node):
     def _teleop_cb(self, msg: Twist):
         self._latest_teleop = msg
         self._last_teleop_time = time.time()
+
+    def _group_detected_cb(self, msg: Bool):
+        if msg.data:
+            self._last_group_seen = time.time()
+
 
     # -----------------------------------------------------------------------
     # Nav2 helpers
@@ -183,6 +194,10 @@ class TourStateMachine(Node):
                 self.get_logger().info('Teleop override — pausing Nav2.')
                 self._cancel_goal()
                 self._state = TELEOP_OVERRIDE
+            elif (time.time() - self._last_group_seen) > GROUP_LOST_TIMEOUT_SEC:
+                self.get_logger().warn('Group lost — waiting for them to reappear.')
+                self._cancel_goal()
+                self._state = WAITING_FOR_GROUP
             elif not self._goal_active and not self._goal_pending:
                 # No goal in flight — something dropped it without us noticing.
                 # Fall back to IDLE so the next tick re-sends.
@@ -203,6 +218,13 @@ class TourStateMachine(Node):
                 self.get_logger().info('Teleop inactive — resuming navigation.')
                 self._state = NAVIGATING
                 self._send_goal(*self._waypoints[self._wp_idx])
+
+        elif self._state == WAITING_FOR_GROUP:
+            self._cmd_pub.publish(Twist())   # hold still while waiting
+            if (time.time() - self._last_group_seen) < GROUP_LOST_TIMEOUT_SEC:
+                self.get_logger().info('Group re-detected — resuming navigation.')
+                self._state = NAVIGATING
+                self._send_goal(*self._waypoints[self._wp_idx]) # re-send same goal
 
         # -- WAYPOINT_REACHED: dwell, then advance --
         elif self._state == WAYPOINT_REACHED:

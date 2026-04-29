@@ -1,0 +1,23 @@
+running egg_info
+writing ../../build/sec_tour_guide/sec_tour_guide.egg-info/PKG-INFO
+writing dependency_links to ../../build/sec_tour_guide/sec_tour_guide.egg-info/dependency_links.txt
+writing entry points to ../../build/sec_tour_guide/sec_tour_guide.egg-info/entry_points.txt
+writing requirements to ../../build/sec_tour_guide/sec_tour_guide.egg-info/requires.txt
+writing top-level names to ../../build/sec_tour_guide/sec_tour_guide.egg-info/top_level.txt
+reading manifest file '../../build/sec_tour_guide/sec_tour_guide.egg-info/SOURCES.txt'
+writing manifest file '../../build/sec_tour_guide/sec_tour_guide.egg-info/SOURCES.txt'
+running build
+running build_py
+running install
+running install_lib
+running install_data
+copying launch/sim_tour.launch.py -> /home/kand0007/ros_ws/src/Intelligent-Robotics-Final-Project/install/sec_tour_guide/share/sec_tour_guide/launch
+copying sec_tour_guide/worlds/test_world.sdf -> /home/kand0007/ros_ws/src/Intelligent-Robotics-Final-Project/install/sec_tour_guide/share/sec_tour_guide/worlds
+running install_egg_info
+removing '/home/kand0007/ros_ws/src/Intelligent-Robotics-Final-Project/install/sec_tour_guide/lib/python3.12/site-packages/sec_tour_guide-0.1.0-py3.12.egg-info' (and everything under it)
+Copying ../../build/sec_tour_guide/sec_tour_guide.egg-info to /home/kand0007/ros_ws/src/Intelligent-Robotics-Final-Project/install/sec_tour_guide/lib/python3.12/site-packages/sec_tour_guide-0.1.0-py3.12.egg-info
+running install_scripts
+Installing group_tracker script to /home/kand0007/ros_ws/src/Intelligent-Robotics-Final-Project/install/sec_tour_guide/lib/sec_tour_guide
+Installing safety_monitor script to /home/kand0007/ros_ws/src/Intelligent-Robotics-Final-Project/install/sec_tour_guide/lib/sec_tour_guide
+Installing tour_state_machine script to /home/kand0007/ros_ws/src/Intelligent-Robotics-Final-Project/install/sec_tour_guide/lib/sec_tour_guide
+writing list of installed files to '/home/kand0007/ros_ws/src/Intelligent-Robotics-Final-Project/build/sec_tour_guide/install.log'
