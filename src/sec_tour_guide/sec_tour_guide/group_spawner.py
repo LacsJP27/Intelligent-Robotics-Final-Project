@@ -1,6 +1,6 @@
 import rclpy
 from rclpy.node import Node
-from gazebo_msgs.srv import SpawnEntity, SetEntityState
+from ros_gz_interfaces.srv import SpawnEntity, SetEntityPose
 from geometry_msgs.msg import Pose, Point, Quaternion, Twist
 import os
 from ament_index_python.packages import get_package_share_directory
@@ -9,7 +9,7 @@ class GroupSpawner(Node):
     def __init__(self):
         super().__init__('group_spawner')
         self.spawn_client = self.create_client(SpawnEntity, '/spawn_entity')
-        self.set_state_client = self.create_client(SetEntityState, '/gazebo/set_entity_state')
+        self.set_state_client = self.create_client(SetEntityPose, '/world/default/set_pose')
         
         while not self.spawn_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('Spawn service not available, waiting again...')
@@ -49,17 +49,16 @@ class GroupSpawner(Node):
         if self.person_sdf is None:
             return
         req = SpawnEntity.Request()
-        req.name = name
-        req.xml = self.person_sdf
-        req.initial_pose = pose
+        req.entity_factory.name = name
+        req.entity_factory.sdf = self.person_sdf
+        req.entity_factory.pose = pose
         self.spawn_client.call_async(req)
 
     def move_people(self):
         for i, name in enumerate(self.person_names):
-            req = SetEntityState.Request()
-            req.state.name = name
-            req.state.pose = self.initial_poses[i] # This needs to be updated
-            req.state.twist = self.velocities[i]
+            req = SetEntityPose.Request()
+            req.entity.name = name
+            req.pose = self.initial_poses[i] # This needs to be updated
             
             # Update position for next iteration
             self.initial_poses[i].position.x += self.velocities[i].linear.x * 0.1 # 0.1 is timer period
