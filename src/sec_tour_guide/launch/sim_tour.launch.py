@@ -24,10 +24,11 @@ def generate_launch_description():
         launch_arguments={
             'world':   world_file,
             'slam':    'True',
+            # 'map': os.path.join(pkg, 'config', 'map.yaml'),
             'headless': 'False',
-            # Robot spawn position — center of the test world
-            'x_pose': '2.286',
-            'y_pose': '3.048',
+            # Robot spawn position — center of the larger (left) section
+            'x_pose': '-1.524',
+            'y_pose': '1.524',
             'z_pose': '0.01',
             'yaw':    '0.0',
         }.items(),

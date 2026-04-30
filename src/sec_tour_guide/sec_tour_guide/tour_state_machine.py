@@ -178,8 +178,16 @@ class TourStateMachine(Node):
     def _loop(self):
         teleop_active = (time.time() - self._last_teleop_time) < TELEOP_TIMEOUT_SEC
 
+        if (teleop_active 
+            and self._state != EMERGENCY_STOP 
+            and self._state != TELEOP_OVERRIDE):
+
+            self.get_logger().info('Teleop active — overriding Nav2 commands.')
+            self._cancel_goal()  # ensure Nav2 goal is cancelled immediately when teleop starts
+            self._state = TELEOP_OVERRIDE
+
         # -- IDLE: wait for Nav2 to be ready, then start --
-        if self._state == IDLE:
+        elif self._state == IDLE:
             if self._waypoints and self._nav_client.server_is_ready():
                 self._state = NAVIGATING
                 self._send_goal(*self._waypoints[self._wp_idx])
@@ -190,10 +198,6 @@ class TourStateMachine(Node):
                 self.get_logger().warn('EMERGENCY STOP — obstacle < 0.25 m!')
                 self._cancel_goal()
                 self._state = EMERGENCY_STOP
-            elif teleop_active:
-                self.get_logger().info('Teleop override — pausing Nav2.')
-                self._cancel_goal()
-                self._state = TELEOP_OVERRIDE
             elif (time.time() - self._last_group_seen) > GROUP_LOST_TIMEOUT_SEC:
                 self.get_logger().warn('Group lost — waiting for them to reappear.')
                 self._cancel_goal()
