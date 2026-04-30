@@ -1,69 +1,67 @@
+import os
+import subprocess
+
 import rclpy
 from rclpy.node import Node
-from ros_gz_interfaces.srv import SpawnEntity, SetEntityPose
-from geometry_msgs.msg import Pose, Point, Quaternion, Twist
-import os
 from ament_index_python.packages import get_package_share_directory
+
+
+WORLD = 'default'
+
+# Robot spawns at (2.286, 3.048) facing +x, so "behind" is -x.
+# Cylinder positions are robot_spawn + offset.
+PEOPLE = [
+    ('person_1', 1.286, 3.548, 0.85),   # 1.0 m behind, 0.5 m left
+    ('person_2', 1.286, 2.548, 0.85),   # 1.0 m behind, 0.5 m right
+    ('person_3', 0.786, 3.048, 0.85),   # 1.5 m behind, centre
+]
+
+# x velocity (m/s) — applied every MOVE_PERIOD seconds
+X_VEL     = 0.3
+MOVE_PERIOD = 1.0
+
 
 class GroupSpawner(Node):
     def __init__(self):
         super().__init__('group_spawner')
-        self.spawn_client = self.create_client(SpawnEntity, '/spawn_entity')
-        self.set_state_client = self.create_client(SetEntityPose, '/world/default/set_pose')
-        
-        while not self.spawn_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('Spawn service not available, waiting again...')
-        while not self.set_state_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('Set state service not available, waiting again...')
 
-        self.person_sdf = self.get_person_sdf()
-        self.person_names = ['person_1', 'person_2', 'person_3']
-        self.initial_poses = [
-            Pose(position=Point(x=-1.0, y=0.5, z=0.85)),
-            Pose(position=Point(x=-1.0, y=-0.5, z=0.85)),
-            Pose(position=Point(x=-1.5, y=0.0, z=0.85))
-        ]
-        self.velocities = [
-            Twist(linear=Point(x=0.5, y=0.0, z=0.0)),
-            Twist(linear=Point(x=0.5, y=0.0, z=0.0)),
-            Twist(linear=Point(x=0.5, y=0.0, z=0.0))
-        ]
+        pkg = get_package_share_directory('sec_tour_guide')
+        self._sdf = os.path.join(
+            pkg, 'worlds', 'models', 'person_cylinder', 'model.sdf')
 
-        for name, pose in zip(self.person_names, self.initial_poses):
-            self.spawn_person(name, pose)
-        
-        self.timer = self.create_timer(0.1, self.move_people)
-        self.get_logger().info('Spawned and now moving 3 people.')
-
-    def get_person_sdf(self):
-        package_share_directory = get_package_share_directory('sec_tour_guide')
-        sdf_file_path = os.path.join(package_share_directory, 'worlds', 'models', 'person_cylinder', 'model.sdf')
-        try:
-            with open(sdf_file_path, 'r') as f:
-                return f.read()
-        except FileNotFoundError:
-            self.get_logger().error(f"SDF file not found at {sdf_file_path}")
-            return None
-
-    def spawn_person(self, name, pose):
-        if self.person_sdf is None:
+        if not os.path.getsize(self._sdf):
+            self.get_logger().error(f'SDF file is empty: {self._sdf}')
             return
-        req = SpawnEntity.Request()
-        req.entity_factory.name = name
-        req.entity_factory.sdf = self.person_sdf
-        req.entity_factory.pose = pose
-        self.spawn_client.call_async(req)
 
-    def move_people(self):
-        for i, name in enumerate(self.person_names):
-            req = SetEntityPose.Request()
-            req.entity.name = name
-            req.pose = self.initial_poses[i] # This needs to be updated
-            
-            # Update position for next iteration
-            self.initial_poses[i].position.x += self.velocities[i].linear.x * 0.1 # 0.1 is timer period
+        # positions as mutable list so move_people can update x
+        self._poses = [[x, y, z] for _, x, y, z in PEOPLE]
 
-            self.set_state_client.call_async(req)
+        for i, (name, _, _, _) in enumerate(PEOPLE):
+            self._spawn(name, *self._poses[i])
+
+        self.get_logger().info('Spawned 3 person cylinders.')
+        self._timer = self.create_timer(MOVE_PERIOD, self._move_people)
+
+
+    def _spawn(self, name, x, y, z):
+        subprocess.Popen([
+            'ros2', 'run', 'ros_gz_sim', 'create',
+            '-world', WORLD,
+            '-name',  name,
+            '-file',  self._sdf,
+            '-x', str(x), '-y', str(y), '-z', str(z),
+        ])
+
+    def _move_people(self):
+        for i, (name, _, _, _) in enumerate(PEOPLE):
+            self._poses[i][0] += X_VEL * MOVE_PERIOD
+            x, y, z = self._poses[i]
+            subprocess.Popen([
+                'ros2', 'run', 'ros_gz_sim', 'set_entity_pose',
+                '--name', name,
+                '--pos', str(x), str(y), str(z),
+            ])
+
 
 def main(args=None):
     rclpy.init(args=args)
@@ -75,6 +73,7 @@ def main(args=None):
     finally:
         node.destroy_node()
         rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()
