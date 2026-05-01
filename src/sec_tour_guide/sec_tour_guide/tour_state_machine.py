@@ -59,7 +59,7 @@ class TourStateMachine(Node):
         self._goal_handle = None      # handle to the current Nav2 goal
         self._goal_active = False     # True once Nav2 accepts and is executing the goal
         self._goal_pending = False    # True between send_goal_async and _goal_response_cb
-
+        self._cancel_requested = False # True if we requested cancel while waiting for goal response
         # --- FSM state ---
         self._state = IDLE
         self._dwell_start = None      # wall-clock time when dwell began
@@ -141,6 +141,11 @@ class TourStateMachine(Node):
             self.get_logger().warn('Nav2 rejected the goal — will retry.')
             self._state = IDLE
             return
+        if self._cancel_requested:
+            self.get_logger().info('Goal accepted but cancel requested — cancelling immediately.')
+            handle.cancel_goal_async()
+            self._cancel_requested = False
+            return
         self._goal_handle = handle
         self._goal_active = True
         result_future = handle.get_result_async()
@@ -170,6 +175,8 @@ class TourStateMachine(Node):
             self._goal_handle.cancel_goal_async()
             self._goal_handle = None
             self._goal_active = False
+        elif self._goal_pending:
+            self._cancel_requested = True
 
     # -----------------------------------------------------------------------
     # Main FSM loop
@@ -178,8 +185,16 @@ class TourStateMachine(Node):
     def _loop(self):
         teleop_active = (time.time() - self._last_teleop_time) < TELEOP_TIMEOUT_SEC
 
+        if (teleop_active 
+            and self._state != EMERGENCY_STOP 
+            and self._state != TELEOP_OVERRIDE):
+
+            self.get_logger().info('Teleop active — overriding Nav2 commands.')
+            self._cancel_goal()  # ensure Nav2 goal is cancelled immediately when teleop starts
+            self._state = TELEOP_OVERRIDE
+
         # -- IDLE: wait for Nav2 to be ready, then start --
-        if self._state == IDLE:
+        elif self._state == IDLE:
             if self._waypoints and self._nav_client.server_is_ready():
                 self._state = NAVIGATING
                 self._send_goal(*self._waypoints[self._wp_idx])
@@ -190,10 +205,6 @@ class TourStateMachine(Node):
                 self.get_logger().warn('EMERGENCY STOP — obstacle < 0.25 m!')
                 self._cancel_goal()
                 self._state = EMERGENCY_STOP
-            elif teleop_active:
-                self.get_logger().info('Teleop override — pausing Nav2.')
-                self._cancel_goal()
-                self._state = TELEOP_OVERRIDE
             elif (time.time() - self._last_group_seen) > GROUP_LOST_TIMEOUT_SEC:
                 self.get_logger().warn('Group lost — waiting for them to reappear.')
                 self._cancel_goal()

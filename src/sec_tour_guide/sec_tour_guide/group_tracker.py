@@ -12,6 +12,7 @@ from sec_tour_guide.utils.clustering import (
 from sec_tour_guide.utils.constants import (
     TOPIC_SCAN,
     TOPIC_GROUP_DETECTED,
+    GROUP_THRESHOLD_DISTANCE,
 )
 
 
@@ -41,7 +42,9 @@ class GroupTracker(Node):
         centroids = cluster(points)
 
         # Steps 6–7: compute distance and publish
-        detected = closest_distance(centroids) is not None
+        detected = (closest_distance(centroids) is not None 
+            and closest_distance(centroids) <= GROUP_THRESHOLD_DISTANCE)
+            
         self._detected_pub.publish(Bool(data=detected))
 
 
