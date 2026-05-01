@@ -23,8 +23,9 @@ def generate_launch_description():
         ),
         launch_arguments={
             'world':   world_file,
-            'slam':    'True',
-            # 'map': os.path.join(pkg, 'config', 'map.yaml'),
+            'slam':    'False',
+            'params_file': os.path.join(pkg, 'config', 'nav2_params.yaml'),
+            'map': os.path.join(pkg, 'config', 'map.yaml'),
             'headless': 'False',
             # Robot spawn position — center of the larger (left) section
             'x_pose': '-1.524',

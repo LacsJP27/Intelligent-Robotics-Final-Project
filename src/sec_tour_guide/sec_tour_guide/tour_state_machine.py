@@ -59,7 +59,7 @@ class TourStateMachine(Node):
         self._goal_handle = None      # handle to the current Nav2 goal
         self._goal_active = False     # True once Nav2 accepts and is executing the goal
         self._goal_pending = False    # True between send_goal_async and _goal_response_cb
-
+        self._cancel_requested = False # True if we requested cancel while waiting for goal response
         # --- FSM state ---
         self._state = IDLE
         self._dwell_start = None      # wall-clock time when dwell began
@@ -141,6 +141,11 @@ class TourStateMachine(Node):
             self.get_logger().warn('Nav2 rejected the goal — will retry.')
             self._state = IDLE
             return
+        if self._cancel_requested:
+            self.get_logger().info('Goal accepted but cancel requested — cancelling immediately.')
+            handle.cancel_goal_async()
+            self._cancel_requested = False
+            return
         self._goal_handle = handle
         self._goal_active = True
         result_future = handle.get_result_async()
@@ -170,6 +175,8 @@ class TourStateMachine(Node):
             self._goal_handle.cancel_goal_async()
             self._goal_handle = None
             self._goal_active = False
+        elif self._goal_pending:
+            self._cancel_requested = True
 
     # -----------------------------------------------------------------------
     # Main FSM loop
