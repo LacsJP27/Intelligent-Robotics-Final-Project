@@ -13,19 +13,21 @@ def generate_launch_description():
     viz_share = get_package_share_directory('turtlebot4_viz')
 
     waypoints_file = os.path.join(pkg, 'config', 'tour_waypoints.yaml')
+    slam_params_file = os.path.join(pkg, 'config', 'slam_toolbox_params.yaml')
+    nav2_params_file = os.path.join(pkg, 'config', 'nav2_params.yaml')
 
     slam = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(nav_share, 'launch', 'slam.launch.py')
         ),
-        launch_arguments={'use_sim_time': 'false'}.items()
+        launch_arguments={'use_sim_time': 'false', 'params': slam_params_file}.items()
     )
 
     nav2 = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(nav_share, 'launch', 'nav2.launch.py')
         ),
-        launch_arguments={'use_sim_time': 'false'}.items()
+        launch_arguments={'use_sim_time': 'false', 'params_file': nav2_params_file}.items()
     )
 
     rviz = IncludeLaunchDescription(
