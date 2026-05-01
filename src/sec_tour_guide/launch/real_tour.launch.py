@@ -1,0 +1,67 @@
+import os
+
+from ament_index_python.packages import get_package_share_directory
+from launch import LaunchDescription
+from launch.actions import IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch_ros.actions import Node
+
+
+def generate_launch_description():
+    pkg = get_package_share_directory('sec_tour_guide')
+    nav_share = get_package_share_directory('turtlebot4_navigation')
+    viz_share = get_package_share_directory('turtlebot4_viz')
+
+    waypoints_file = os.path.join(pkg, 'config', 'tour_waypoints.yaml')
+
+    slam = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(nav_share, 'launch', 'slam.launch.py')
+        ),
+        launch_arguments={'use_sim_time': 'false'}.items()
+    )
+
+    nav2 = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(nav_share, 'launch', 'nav2.launch.py')
+        ),
+        launch_arguments={'use_sim_time': 'false'}.items()
+    )
+
+    rviz = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(viz_share, 'launch', 'view_navigation.launch.py')
+        ),
+        launch_arguments={'use_sim_time': 'false'}.items()
+    )
+
+    safety_monitor = Node(
+        package='sec_tour_guide',
+        executable='safety_monitor',
+        name='safety_monitor',
+        output='screen',
+    )
+
+    tour_fsm = Node(
+        package='sec_tour_guide',
+        executable='tour_state_machine',
+        name='tour_state_machine',
+        output='screen',
+        parameters=[{'waypoints_file': waypoints_file}],
+    )
+
+    group_tracker = Node(
+        package='sec_tour_guide',
+        executable='group_tracker',
+        name='group_tracker',
+        output='screen',
+    )
+
+    return LaunchDescription([
+        slam,
+        nav2,
+        rviz,
+        safety_monitor,
+        tour_fsm,
+        group_tracker,
+    ])
