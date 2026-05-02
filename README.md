@@ -438,6 +438,59 @@ Document in `attribution.md`:
 
 ---
 
+## Real-World Map Creation
+
+Run these steps once to build and save the SEC map before running the full tour after an ssh into the turtlemap.
+
+**MAKE SURE TO RUN THE `robot-setup.sh` COMMANDS ON EVERY NEW TERMINAL**
+
+**Step 1 — Build and source**
+```bash
+cd ~/ros2_ws
+colcon build --packages-select sec_tour_guide
+source install/setup.bash
+```
+
+**Step 2 — Launch SLAM** (Terminal 1, keep open)
+```bash
+ros2 launch turtlebot4_navigation slam.launch.py \
+  params:=$HOME/ros2_ws/install/sec_tour_guide/share/sec_tour_guide/config/slam_toolbox_params.yaml
+```
+
+**Step 3 — Open RViz to watch the map build** (Terminal 2)
+```bash
+ros2 launch turtlebot4_viz view_navigation.launch.py
+```
+
+**Step 4 — Launch teleop** (Terminal 3, keep open)
+```bash
+ros2 run teleop_twist_keyboard teleop_twist_keyboard
+```
+
+**Step 5 — Drive around the entire room** covering all areas including corners and doorways.
+
+**Step 6 — Save the map** (Terminal 4, once satisfied with coverage)
+```bash
+ros2 run nav2_map_server map_saver_cli -f ~/ros2_ws/src/Intelligent-Robotics-Final-Project/src/sec_tour_guide/config/sec_real_map
+```
+
+This saves `sec_real_map.yaml` and `sec_real_map.pgm` into the config directory.
+
+**Step 7 — Rebuild to install the new map files**
+```bash
+colcon build --packages-select sec_tour_guide
+```
+
+> **Note:** Make sure all terminals have the correct robot environment set:
+> ```bash
+> export ROS_DOMAIN_ID=2
+> export ROS_DISCOVERY_SERVER=';;10.194.16.41:11811;'
+> export ROS_SUPER_CLIENT=True
+> unset ROS_LOCALHOST_ONLY
+> ```
+
+---
+
 ## Quick-Start Commands
 
 ```bash

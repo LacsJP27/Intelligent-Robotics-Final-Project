@@ -2,7 +2,7 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch.actions import IncludeLaunchDescription, TimerAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
 
@@ -16,11 +16,13 @@ def generate_launch_description():
     slam_params_file = os.path.join(pkg, 'config', 'slam_toolbox_params.yaml')
     nav2_params_file = os.path.join(pkg, 'config', 'nav2_params.yaml')
 
-    slam = IncludeLaunchDescription(
+    map_file = os.path.join(pkg, 'config', 'sec_real_map.yaml')
+
+    localization = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(nav_share, 'launch', 'slam.launch.py')
+            os.path.join(nav_share, 'launch', 'localization.launch.py')
         ),
-        launch_arguments={'use_sim_time': 'false', 'params': slam_params_file}.items()
+        launch_arguments={'use_sim_time': 'false', 'map': map_file, 'params': nav2_params_file}.items()
     )
 
     nav2 = IncludeLaunchDescription(
@@ -60,10 +62,10 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        slam,
+        localization,
         nav2,
         rviz,
         safety_monitor,
-        tour_fsm,
         group_tracker,
+        TimerAction(period=30.0, actions=[tour_fsm]),
     ])
