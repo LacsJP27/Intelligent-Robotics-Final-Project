@@ -22,7 +22,7 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(
             os.path.join(nav_share, 'launch', 'localization.launch.py')
         ),
-        launch_arguments={'use_sim_time': 'false', 'map': map_file, 'params': nav2_params_file}.items()
+        launch_arguments={'use_sim_time': 'false', 'map': map_file, 'params_file': nav2_params_file}.items()
     )
 
     nav2 = IncludeLaunchDescription(
