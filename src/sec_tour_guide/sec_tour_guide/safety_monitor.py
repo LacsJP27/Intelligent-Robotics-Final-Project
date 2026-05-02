@@ -11,6 +11,10 @@ from sec_tour_guide.utils.constants import (
 )
 
 
+# Rear exclusion: ignore this half-arc centred at 180° (camera mount blind spot)
+_REAR_EXCLUSION_HALF_RAD = math.radians(40.0)
+
+
 class SafetyMonitor(Node):
 
     def __init__(self):
@@ -30,10 +34,14 @@ class SafetyMonitor(Node):
 
         for r in msg.ranges:
             if math.isfinite(r) and r > 0.0:
-                # Normalise angle to [-pi, pi] so 0 = forward
+                # Normalise angle to [-pi, pi] so 0 = forward, ±pi = rear
                 a = angle % (2.0 * math.pi)
                 if a > math.pi:
                     a -= 2.0 * math.pi
+                # Skip the rear blind spot where the camera mount sits
+                if abs(abs(a) - math.pi) <= _REAR_EXCLUSION_HALF_RAD:
+                    angle += msg.angle_increment
+                    continue
                 if abs(a) <= self._forward_half_rad and r < EMERGENCY_STOP_DISTANCE:
                     emergency = True
                     break

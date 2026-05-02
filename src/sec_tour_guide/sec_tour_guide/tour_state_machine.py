@@ -60,6 +60,11 @@ class TourStateMachine(Node):
         self._goal_active = False     # True once Nav2 accepts and is executing the goal
         self._goal_pending = False    # True between send_goal_async and _goal_response_cb
         self._cancel_requested = False # True if we requested cancel while waiting for goal response
+        # bt_navigator advertises its action server before its BT is fully loaded; during
+        # that window goals are rejected with "Action server is inactive". Back off so
+        # we don't hammer it at the FSM loop rate.
+        self._retry_after = 0.0
+        self._retry_cooldown_sec = 1.0
         # --- FSM state ---
         self._state = IDLE
         self._dwell_start = None      # wall-clock time when dwell began
@@ -139,6 +144,7 @@ class TourStateMachine(Node):
         handle = future.result()
         if not handle.accepted:
             self.get_logger().warn('Nav2 rejected the goal — will retry.')
+            self._retry_after = time.time() + self._retry_cooldown_sec
             self._state = IDLE
             return
         if self._cancel_requested:
@@ -195,7 +201,9 @@ class TourStateMachine(Node):
 
         # -- IDLE: wait for Nav2 to be ready, then start --
         elif self._state == IDLE:
-            if self._waypoints and self._nav_client.server_is_ready():
+            if (self._waypoints
+                    and self._nav_client.server_is_ready()
+                    and time.time() >= self._retry_after):
                 self._state = NAVIGATING
                 self._send_goal(*self._waypoints[self._wp_idx])
 
