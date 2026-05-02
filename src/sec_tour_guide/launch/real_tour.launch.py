@@ -51,7 +51,10 @@ def generate_launch_description():
         executable='tour_state_machine',
         name='tour_state_machine',
         output='screen',
-        parameters=[{'waypoints_file': waypoints_file}],
+        parameters=[{
+            'waypoints_file': waypoints_file,
+            'use_stamped_cmd_vel': True,
+        }],
     )
 
     group_tracker = Node(
