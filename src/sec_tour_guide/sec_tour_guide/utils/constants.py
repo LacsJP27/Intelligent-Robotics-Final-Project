@@ -9,7 +9,7 @@ FSM_LOOP_RATE_HZ = 10.0
 
 # --- Group Tracker ---
 GROUP_LOST_TIMEOUT_SEC = 60        # seconds — if group not detected for this long, consider lost
-GROUP_THRESHOLD_DISTANCE = 1.52     # meters — if group is farther than this, consider lost
+GROUP_THRESHOLD_DISTANCE = 0.1524     # meters — if group is farther than this, consider lost
 
 # --- Topic Names ---
 TOPIC_SCAN = '/scan'
