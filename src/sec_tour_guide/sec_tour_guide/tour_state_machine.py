@@ -6,7 +6,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
 from action_msgs.msg import GoalStatus
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, TwistStamped
 from std_msgs.msg import Bool, String
 from nav2_msgs.action import NavigateToPose
 
@@ -49,6 +49,12 @@ class TourStateMachine(Node):
         self.declare_parameter('waypoints_file', '')
         wp_file = self.get_parameter('waypoints_file').get_parameter_value().string_value
 
+        # Real TurtleBot 4 (Create 3) expects TwistStamped on /cmd_vel; the Gazebo
+        # simulation expects plain Twist. Launch files set this per-environment.
+        self.declare_parameter('use_stamped_cmd_vel', False)
+        self._use_stamped = self.get_parameter('use_stamped_cmd_vel').value
+        self._cmd_msg_type = TwistStamped if self._use_stamped else Twist
+
         # --- Waypoints ---
         self._waypoints = []          # list of (x, y, yaw)
         self._wp_idx = 0              # which waypoint we are heading to
@@ -60,6 +66,11 @@ class TourStateMachine(Node):
         self._goal_active = False     # True once Nav2 accepts and is executing the goal
         self._goal_pending = False    # True between send_goal_async and _goal_response_cb
         self._cancel_requested = False # True if we requested cancel while waiting for goal response
+        # bt_navigator advertises its action server before its BT is fully loaded; during
+        # that window goals are rejected with "Action server is inactive". Back off so
+        # we don't hammer it at the FSM loop rate.
+        self._retry_after = 0.0
+        self._retry_cooldown_sec = 1.0
         # --- FSM state ---
         self._state = IDLE
         self._dwell_start = None      # wall-clock time when dwell began
@@ -72,15 +83,15 @@ class TourStateMachine(Node):
 
         # --- Teleop tracking ---
         self._last_teleop_time = 0.0
-        self._latest_teleop = Twist()
+        self._latest_teleop = self._cmd_msg_type()
 
         # --- Publishers ---
-        self._cmd_pub = self.create_publisher(Twist, TOPIC_CMD_VEL, 10)
+        self._cmd_pub = self.create_publisher(self._cmd_msg_type, TOPIC_CMD_VEL, 10)
         self._state_pub = self.create_publisher(String, TOPIC_TOUR_STATE, 10)
 
         # --- Subscribers ---
         self.create_subscription(Bool, TOPIC_EMERGENCY, self._emergency_cb, 10)
-        self.create_subscription(Twist, TOPIC_TELEOP, self._teleop_cb, 10)
+        self.create_subscription(self._cmd_msg_type, TOPIC_TELEOP, self._teleop_cb, 10)
         self.create_subscription(Bool, TOPIC_GROUP_DETECTED, self._group_detected_cb, 10)
         # --- Main loop timer ---
         period = 1.0 / FSM_LOOP_RATE_HZ
@@ -96,7 +107,7 @@ class TourStateMachine(Node):
     def _emergency_cb(self, msg: Bool):
         self._emergency = msg.data
 
-    def _teleop_cb(self, msg: Twist):
+    def _teleop_cb(self, msg):
         self._latest_teleop = msg
         self._last_teleop_time = time.time()
 
@@ -104,6 +115,30 @@ class TourStateMachine(Node):
         if msg.data:
             self._last_group_seen = time.time()
 
+
+    # -----------------------------------------------------------------------
+    # Velocity helpers
+    # -----------------------------------------------------------------------
+
+    def _make_stop_cmd(self):
+        """Zero-velocity command in whichever message type is configured."""
+        if self._use_stamped:
+            msg = TwistStamped()
+            msg.header.stamp = self.get_clock().now().to_msg()
+            msg.header.frame_id = 'base_link'
+            return msg
+        return Twist()
+
+    def _publish_teleop(self):
+        """Relay the latest teleop command, refreshing the timestamp if stamped.
+
+        The Create 3 base rejects TwistStamped messages older than ~200 ms, so
+        the original keyboard timestamp would be too stale by the time it
+        reaches the robot over WiFi.
+        """
+        if self._use_stamped:
+            self._latest_teleop.header.stamp = self.get_clock().now().to_msg()
+        self._cmd_pub.publish(self._latest_teleop)
 
     # -----------------------------------------------------------------------
     # Nav2 helpers
@@ -139,6 +174,7 @@ class TourStateMachine(Node):
         handle = future.result()
         if not handle.accepted:
             self.get_logger().warn('Nav2 rejected the goal — will retry.')
+            self._retry_after = time.time() + self._retry_cooldown_sec
             self._state = IDLE
             return
         if self._cancel_requested:
@@ -195,7 +231,9 @@ class TourStateMachine(Node):
 
         # -- IDLE: wait for Nav2 to be ready, then start --
         elif self._state == IDLE:
-            if self._waypoints and self._nav_client.server_is_ready():
+            if (self._waypoints
+                    and self._nav_client.server_is_ready()
+                    and time.time() >= self._retry_after):
                 self._state = NAVIGATING
                 self._send_goal(*self._waypoints[self._wp_idx])
 
@@ -216,7 +254,7 @@ class TourStateMachine(Node):
 
         # -- EMERGENCY_STOP: publish zero velocity until clear --
         elif self._state == EMERGENCY_STOP:
-            self._cmd_pub.publish(Twist())   # zero velocity
+            self._cmd_pub.publish(self._make_stop_cmd())
             if not self._emergency:
                 self.get_logger().info('Obstacle cleared — resuming.')
                 self._state = NAVIGATING
@@ -224,14 +262,14 @@ class TourStateMachine(Node):
 
         # -- TELEOP_OVERRIDE: relay keyboard commands --
         elif self._state == TELEOP_OVERRIDE:
-            self._cmd_pub.publish(self._latest_teleop)
+            self._publish_teleop()
             if not teleop_active:
                 self.get_logger().info('Teleop inactive — resuming navigation.')
                 self._state = NAVIGATING
                 self._send_goal(*self._waypoints[self._wp_idx])
 
         elif self._state == WAITING_FOR_GROUP:
-            self._cmd_pub.publish(Twist())   # hold still while waiting
+            self._cmd_pub.publish(self._make_stop_cmd())
             if (time.time() - self._last_group_seen) < GROUP_LOST_TIMEOUT_SEC:
                 self.get_logger().info('Group re-detected — resuming navigation.')
                 self._state = NAVIGATING
@@ -239,7 +277,7 @@ class TourStateMachine(Node):
 
         # -- WAYPOINT_REACHED: dwell, then advance --
         elif self._state == WAYPOINT_REACHED:
-            self._cmd_pub.publish(Twist())   # hold still during dwell
+            self._cmd_pub.publish(self._make_stop_cmd())
             if time.time() - self._dwell_start >= WAYPOINT_DWELL_TIME:
                 self._wp_idx += 1
                 if self._wp_idx >= len(self._waypoints):
@@ -251,7 +289,7 @@ class TourStateMachine(Node):
 
         # -- TOUR_COMPLETE: sit still --
         elif self._state == TOUR_COMPLETE:
-            self._cmd_pub.publish(Twist())   # zero velocity
+            self._cmd_pub.publish(self._make_stop_cmd())
 
         # Publish current state for monitoring
         self._state_pub.publish(String(data=self._state))
