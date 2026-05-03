@@ -464,7 +464,7 @@ ros2 launch turtlebot4_viz view_navigation.launch.py
 
 **Step 4 — Launch teleop** (Terminal 3, keep open)
 ```bash
-ros2 run teleop_twist_keyboard teleop_twist_keyboard
+ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -p stamped:=true
 ```
 
 **Step 5 — Drive around the entire room** covering all areas including corners and doorways.
@@ -488,6 +488,35 @@ colcon build --packages-select sec_tour_guide
 > export ROS_SUPER_CLIENT=True
 > unset ROS_LOCALHOST_ONLY
 > ```
+
+---
+
+## Cmd_Vel Message Type — Real Robot vs. Simulation
+
+The real TurtleBot 4 (Create 3) requires `geometry_msgs/TwistStamped` on `/cmd_vel`. Gazebo's diff-drive plugin requires plain `geometry_msgs/Twist`. Both `real_tour.launch.py` and `sim_tour.launch.py` load the same `config/nav2_params.yaml`, so the type must be flipped depending on which one you're running.
+
+**Default (committed) state: configured for the REAL robot.** Before running `sim_tour.launch.py` in Gazebo, set the following three lines in `src/sec_tour_guide/config/nav2_params.yaml` to `false`:
+
+| Line | Block | Change |
+|------|-------|--------|
+| 87  | `controller_server`  | `enable_stamped_cmd_vel: true` → `false` |
+| 370 | `velocity_smoother`  | `enable_stamped_cmd_vel: true` → `false` |
+| 385 | `collision_monitor`  | `enable_stamped_cmd_vel: true` → `false` |
+
+(Line numbers may drift as the file changes — search for `enable_stamped_cmd_vel` to locate them.)
+
+The FSM's matching parameter (`use_stamped_cmd_vel`) is already set per-launch — `True` in `real_tour.launch.py`, omitted (defaults to `False`) in `sim_tour.launch.py` — so no FSM changes are needed when switching.
+
+After editing, rebuild so the install share copy picks up the change:
+```bash
+colcon build --packages-select sec_tour_guide
+```
+
+Verify the live message type once running:
+```bash
+ros2 topic info /cmd_vel -v
+```
+Should show `Type: geometry_msgs/msg/Twist` in sim, `geometry_msgs/msg/TwistStamped` on the real robot.
 
 ---
 
