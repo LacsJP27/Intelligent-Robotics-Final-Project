@@ -39,10 +39,16 @@ amcl:
     scan_topic: scan
     set_initial_pose: true
     initial_pose:
-      x: -0.005
-      y: 0.055
+      # --- SOUTH ROBLAB initial pose ---
+      x: -5.035
+      y: 8.481
       z: 0.0
-      yaw: -1.665
+      yaw: 0.0
+      # --- OPEN REAL MAP initial pose ---
+      # x: -0.005
+      # y: 0.055
+      # z: 0.0
+      # yaw: -1.665
 
 
 bt_navigator:
