@@ -6,5 +6,5 @@ tour:
   waypoints:
     - {x: -0.550, y: -0.131, yaw:  1.708, label: "Stop 1"}
     - {x: -0.830, y:  1.892, yaw: -1.454, label: "Stop 2 — far end"}
-    - {x: -0.581, y: -0.224, yaw: -2.179, label: "Stop 3 — return through Stop 1"}
-    - {x: -1.685, y: -1.814, yaw:  1.546, label: "Stop 4 — back to start"}
+    # - {x: -0.581, y: -0.224, yaw: -2.179, label: "Stop 3 — return through Stop 1"}
+    # - {x: -1.685, y: -1.814, yaw:  1.546, label: "Stop 4 — back to start"}

@@ -7,7 +7,7 @@ REAR_ARC_MIN_RAD = math.radians(120.0)   # 0 = forward in base_link
 REAR_ARC_MAX_RAD = math.radians(240.0)
 
 # --- Range filter ---
-RANGE_MIN = 0.5   # metres
+RANGE_MIN = 0   # metres
 RANGE_MAX = 5.0
 
 # --- DBSCAN ---
