@@ -1,0 +1,38 @@
+# Initial pose for the OPEN REAL MAP
+# Captured via: ros2 run tf2_ros tf2_echo map base_link
+# Use these values in nav2_params.yaml under amcl > initial_pose
+# when running the tour against the open real map (NOT sec_real_map).
+
+initial_pose:
+  x: -0.005
+  y:  0.055
+  z:  0.0
+  yaw: -1.665   # radians  (-95.4 deg)
+
+# ---------- Waypoint candidates (from /clicked_point in RViz) ----------
+# Use these in tour_waypoints.yaml. Yaw not captured — set manually
+# (rule of thumb: face the next waypoint).
+
+waypoint_1:
+  x: -0.585
+  y: -1.632
+
+waypoint_2:
+  x:  0.793
+  y: -2.777
+
+waypoint_3:
+  x: -0.263
+  y: -4.405
+
+# ---------- Raw tf2_echo capture ----------
+# At time 1777991196.444697586
+# - Translation: [-0.005, 0.055, 0.000]
+# - Rotation: in Quaternion (xyzw) [0.000, 0.001, -0.740, 0.673]
+# - Rotation: in RPY (radian) [-0.001, 0.002, -1.665]
+# - Rotation: in RPY (degree) [-0.083, 0.110, -95.424]
+# - Matrix:
+#  -0.095  0.996  0.001 -0.005
+#  -0.996 -0.095 -0.002  0.055
+#  -0.002 -0.001  1.000  0.000
+#   0.000  0.000  0.000  1.000

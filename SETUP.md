@@ -69,4 +69,8 @@ ros2 topic echo /group/detected
 **Terminal 4** — monitor FSM state:
 ```bash
 ros2 topic echo /tour/state
+
+** How to check muilple ros domain ids **
+pgrep -af 'ros2'
+pkill -f 'ros2cli.deamon'
 ```

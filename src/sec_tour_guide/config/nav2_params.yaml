@@ -39,10 +39,10 @@ amcl:
     scan_topic: scan
     set_initial_pose: true
     initial_pose:
-      x: -1.685
-      y: -1.814
+      x: -0.005
+      y: 0.055
       z: 0.0
-      yaw: 1.546
+      yaw: -1.665
 
 
 bt_navigator:
