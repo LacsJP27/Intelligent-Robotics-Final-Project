@@ -1,5 +1,5 @@
 # --- Safety ---
-EMERGENCY_STOP_DISTANCE = 0.25   # meters — stop if anything closer than this
+EMERGENCY_STOP_DISTANCE = 0.05   # meters — stop if anything closer than this
 FORWARD_ARC_HALF_DEG = 90.0      # degrees — check this cone left/right of forward
 
 # --- Tour State Machine ---
@@ -8,8 +8,8 @@ TELEOP_TIMEOUT_SEC = 0.5         # seconds — resume Nav2 this long after last 
 FSM_LOOP_RATE_HZ = 10.0  
 
 # --- Group Tracker ---
-GROUP_LOST_TIMEOUT_SEC = 60        # seconds — if group not detected for this long, consider lost
-GROUP_THRESHOLD_DISTANCE = 0.1524     # meters — if group is farther than this, consider lost
+GROUP_LOST_TIMEOUT_SEC = 5        # seconds — if group not detected for this long, consider lost
+GROUP_THRESHOLD_DISTANCE = 1.52     # meters — if group is farther than this, consider lost
 
 # --- Topic Names ---
 TOPIC_SCAN = '/scan'

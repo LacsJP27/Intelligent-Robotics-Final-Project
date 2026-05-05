@@ -4,6 +4,7 @@ tour:
   # The test world upper room extends roughly x: -2.0 to 2.0, y: -1.5 to 3.0
   # These waypoints stay in the open upper room where the robot spawns.
   waypoints:
-    - {x:  3.8, y:  0, yaw: 0.0,  label: "Stop 1 — North end"}
-    - {x: -1.0, y:  1.5, yaw: 3.14, label: "Stop 2 — Turn around"}
-    - {x:  0.0, y:  0.0, yaw: 0.0,  label: "Stop 3 — Return to start"}
+    - {x: -0.550, y: -0.131, yaw:  1.708, label: "Stop 1"}
+    - {x: -0.830, y:  1.892, yaw: -1.454, label: "Stop 2 — far end"}
+    - {x: -0.581, y: -0.224, yaw: -2.179, label: "Stop 3 — return through Stop 1"}
+    - {x: -1.685, y: -1.814, yaw:  1.546, label: "Stop 4 — back to start"}
