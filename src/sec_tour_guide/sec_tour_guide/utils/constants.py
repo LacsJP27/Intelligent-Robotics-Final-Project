@@ -8,8 +8,9 @@ TELEOP_TIMEOUT_SEC = 0.5         # seconds — resume Nav2 this long after last 
 FSM_LOOP_RATE_HZ = 10.0  
 
 # --- Group Tracker ---
-GROUP_LOST_TIMEOUT_SEC = 5        # seconds — if group not detected for this long, consider lost
-GROUP_THRESHOLD_DISTANCE = 1.52     # meters — if group is farther than this, consider lost
+GROUP_LOST_TIMEOUT_SEC = 0.5    # seconds — if group not detected for this long, consider lost
+GROUP_THRESHOLD_DISTANCE = 1    # meters — if group is farther than this, consider lost
+GROUP_DETECTED_PERCENTAGE_THRESHOLD = 0.5  # percentage of detections that must be group for "detected" status
 
 # --- Topic Names ---
 TOPIC_SCAN = '/scan'

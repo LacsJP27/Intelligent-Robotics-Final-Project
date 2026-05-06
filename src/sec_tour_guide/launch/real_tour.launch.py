@@ -16,7 +16,7 @@ def generate_launch_description():
     slam_params_file = os.path.join(pkg, 'config', 'slam_toolbox_params.yaml')
     nav2_params_file = os.path.join(pkg, 'config', 'nav2_params.yaml')
 
-    map_file = os.path.join(pkg, 'config', 'cardboard_real_map.yaml')
+    map_file = os.path.join(pkg, 'config', 'south_roblab_map.yaml')
 
     localization = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(

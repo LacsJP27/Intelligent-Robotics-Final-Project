@@ -1,0 +1,46 @@
+--- inital pose ----
+header:
+  stamp:
+    sec: 1778010899
+    nanosec: 347859697
+  frame_id: map
+point:
+  x: -5.034579753875732
+  y: 8.480880737304688
+  z: 0.34820556640625
+---
+
+--- waypoint straight short ---
+header:
+  stamp:
+    sec: 1778010907
+    nanosec: 257622353
+  frame_id: map
+point:
+  x: -8.236847877502441
+  y: 7.086450576782227
+  z: 0.002471923828125
+
+
+--- waypoint straight long ---
+
+header:
+  stamp:
+    sec: 1778010919
+    nanosec: 997877898
+  frame_id: map
+point:
+  x: -9.30757999420166
+  y: 6.507165908813477
+  z: -0.001434326171875
+
+--- waypoint left ---
+header:
+  stamp:
+    sec: 1778010913
+    nanosec: 217758743
+  frame_id: map
+point:
+  x: -3.5955445766448975
+  y: 5.241156578063965
+  z: -0.001434326171875

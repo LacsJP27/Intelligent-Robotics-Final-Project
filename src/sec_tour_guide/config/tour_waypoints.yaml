@@ -1,10 +1,21 @@
 tour:
   frame_id: "map"
-  # Coordinates are in the MAP frame. SLAM starts the robot at (0, 0).
-  # The test world upper room extends roughly x: -2.0 to 2.0, y: -1.5 to 3.0
-  # These waypoints stay in the open upper room where the robot spawns.
+  # Coordinates are in the MAP frame.
+  # Active set below is for the OPEN REAL MAP.
+  # See sec_real_map_coords.txt / open_real_map_coords.txt for swap-in values.
   waypoints:
-    - {x: -0.550, y: -0.131, yaw:  1.708, label: "Stop 1"}
-    - {x: -0.830, y:  1.892, yaw: -1.454, label: "Stop 2 — far end"}
-    - {x: -0.581, y: -0.224, yaw: -2.179, label: "Stop 3 — return through Stop 1"}
-    - {x: -1.685, y: -1.814, yaw:  1.546, label: "Stop 4 — back to start"}
+    # --- OPEN REAL MAP waypoints ---
+    # - {x: -0.585, y: -1.632, yaw: -0.694, label: "Stop 1"}
+    # - {x:  0.793, y: -2.777, yaw: -2.148, label: "Stop 2"}
+    # - {x: -0.263, y: -4.405, yaw:  1.513, label: "Stop 3 — face back toward start"}
+
+    # --- SEC REAL MAP waypoints (uncomment when switching maps) ---
+    # - {x: -0.550, y: -0.131, yaw:  1.708, label: "Stop 1"}
+    # - {x: -0.830, y:  1.892, yaw: -1.454, label: "Stop 2 — far end"}
+    # - {x: -0.581, y: -0.224, yaw: -2.179, label: "Stop 3 — return through Stop 1"}
+    # - {x: -1.685, y: -1.814, yaw:  1.546, label: "Stop 4 — back to start"}
+
+    # --- SOUTH ROBLAB waypoints (uncomment when switching maps) ---
+    - {x: -12.237, y: 7.086, yaw: 0.0, label: "Stop 1 — straight short"}
+    - {x: -5.035, y: 8.481, yaw: 0.0, label: "Stop 2 — straight long"}
+    # - {x: -3.596, y: 5.241, yaw: 0.0, label: "Stop 3 — left"}
