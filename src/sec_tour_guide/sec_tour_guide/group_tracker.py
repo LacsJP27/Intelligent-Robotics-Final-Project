@@ -42,9 +42,8 @@ class GroupTracker(Node):
         centroids = cluster(points)
 
         # Steps 6–7: compute distance and publish
-        detected = (closest_distance(centroids) is not None 
-            and closest_distance(centroids) <= GROUP_THRESHOLD_DISTANCE)
-            
+        dist = closest_distance(centroids)
+        detected = dist is not None and dist <= GROUP_THRESHOLD_DISTANCE
         self._detected_pub.publish(Bool(data=detected))
 
 

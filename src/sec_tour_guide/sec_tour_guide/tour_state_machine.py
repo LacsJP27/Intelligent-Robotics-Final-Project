@@ -80,7 +80,6 @@ class TourStateMachine(Node):
 
         # --- Group detection flag (set by group_tracker) ---
         self._last_group_seen = time.time() # assume group there at startup
-        self._group_detected_count = 0
 
         # --- Teleop tracking ---
         self._last_teleop_time = 0.0
@@ -115,7 +114,6 @@ class TourStateMachine(Node):
     def _group_detected_cb(self, msg: Bool):
         if msg.data:
             self._last_group_seen = time.time()
-            # self._group_detected_count += 1
 
 
     # -----------------------------------------------------------------------
