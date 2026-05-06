@@ -1,5 +1,5 @@
 # --- Safety ---
-EMERGENCY_STOP_DISTANCE = 0.05   # meters — stop if anything closer than this
+EMERGENCY_STOP_DISTANCE = 0.20   # meters — stop if anything closer than this
 FORWARD_ARC_HALF_DEG = 90.0      # degrees — check this cone left/right of forward
 
 # --- Tour State Machine ---

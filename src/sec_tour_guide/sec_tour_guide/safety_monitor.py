@@ -13,6 +13,8 @@ from sec_tour_guide.utils.constants import (
 
 # Rear exclusion: ignore this half-arc centred at 180° (camera mount blind spot)
 _REAR_EXCLUSION_HALF_RAD = math.radians(40.0)
+# Forward arc: LiDAR angle that corresponds to the robot's forward direction
+_FORWARD_CENTER_RAD = math.radians(-93.6)
 
 
 class SafetyMonitor(Node):
@@ -33,8 +35,8 @@ class SafetyMonitor(Node):
         angle = msg.angle_min
 
         for r in msg.ranges:
-            if math.isfinite(r) and r > 0.0:
-                # Normalise angle to [-pi, pi] so 0 = forward, ±pi = rear
+            if math.isfinite(r) and r >= msg.range_min:
+                # Normalise angle to [-pi, pi]
                 a = angle % (2.0 * math.pi)
                 if a > math.pi:
                     a -= 2.0 * math.pi
@@ -42,7 +44,7 @@ class SafetyMonitor(Node):
                 if abs(abs(a) - math.pi) <= _REAR_EXCLUSION_HALF_RAD:
                     angle += msg.angle_increment
                     continue
-                if abs(a) <= self._forward_half_rad and r < EMERGENCY_STOP_DISTANCE:
+                if abs(a - _FORWARD_CENTER_RAD) <= self._forward_half_rad and r < EMERGENCY_STOP_DISTANCE:
                     emergency = True
                     break
             angle += msg.angle_increment
