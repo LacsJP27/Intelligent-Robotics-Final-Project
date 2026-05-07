@@ -16,6 +16,9 @@ tour:
     # - {x: -1.685, y: -1.814, yaw:  1.546, label: "Stop 4 — back to start"}
 
     # --- SOUTH ROBLAB waypoints (uncomment when switching maps) ---
-    - {x: -12.237, y: 7.086, yaw: 0.0, label: "Stop 1 — straight short"}
-    - {x: -5.035, y: 8.481, yaw: 0.0, label: "Stop 2 — straight long"}
-    # - {x: -3.596, y: 5.241, yaw: 0.0, label: "Stop 3 — left"}
+     - {x: -9.307, y: 6.507, yaw: 0.0, label: "Stop 1 — straight long"}
+
+     - {x: -5.035, y: 8.481, yaw: 0.0, label: "Stop 2 — initial"}
+     - {x: -3.596, y: 6.241, yaw: 0.0, label: "Stop 3 — left"}
+     - {x: -5.035, y: 8.481, yaw: 0.0, label: "Stop 2 — initial"}
+
